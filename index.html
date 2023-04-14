@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Cells</title>
+	<script src="https://cdn.jsdelivr.net/npm/p5@1.4.0/lib/p5.js"></script>
+	<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body style="width:100%; height: 100%;">
+
+	<p style="position:fixed; left: 210px"  > Size</p>
+	<input id=sizeInput type="range" name="cellWidth" style="position: fixed; width: 200px; height: 20px;"  min="1" max = "100" value="20" step="1" onchange="resetCells()">
+
+	<p style="position:fixed; left: 210px; top: 30px;"  > Seed %</p>
+	<input id="seedInput" type="range" name="cellWidth" style="position: fixed; width: 200px;height: 20px; top: 30px"  min="0" max = "100" value="40" step="1" onchange="resetCells()">
+
+	<p style="position:fixed; left: 210px; top: 60px;"  > Neighbors Needed</p>
+	<input id="neighborsNeededInput" type="range" name="cellWidth" style="position: fixed; width: 200px;height: 20px; top: 60px"  min="0" max = "8" value="5" step="1" onchange="resetCells()">
+
+	<p style="position:fixed; left: 210px; top: 90px;"  > Frame Rate </p>
+	<input id="frameRateInput" type="range" name="cellWidth" style="position: fixed; width: 200px;height: 20px; top: 90px"  min="0" max = "20" value="5" step="1" onchange="resetCells()">
+
+</body>
+</html>
+<script type="text/javascript">
+
+	let cellWidth = 20
+	let cellHeight = 20
+	let cells = []
+	let livingChance = 0.3
+	let rows
+	let cols
+	let emerginCells = []
+	let dyingCells = []
+	let neighborsNeeded = 5
+
+	function setup() {
+	  createCanvas(windowWidth, windowHeight)	
+	  textAlign(CENTER,CENTER)
+	  splitScreenIntoCells()
+	  document.getElementById('sizeInput').value = cellWidth
+	  document.getElementById('seedInput').value = livingChance * 100
+	  rows = Math.ceil((windowWidth+cellWidth)/cellWidth)
+	  cols = Math.ceil((windowHeight+cellHeight)/cellHeight)
+	  frameRate(5)
+	}
+
+	function draw() {
+	  background(0);
+	  fill(255);
+	  let index = 0
+	  emerginCells = []
+	  dyingCells = []
+	  cells.forEach((cell)=>{
+	  	cell.draw()
+	  	cell.checkNeighbors(index,cells)
+	  	index++
+	  })
+	  emerginCells.forEach((cell)=>{
+	  	cell.alive = true
+	  })
+	  dyingCells.forEach((cell)=>{
+	  	cell.alive = false
+	  })
+	}
+
+	function splitScreenIntoCells() {
+		cells = []
+		let cellY = 0
+		while(cellY < windowHeight+cellHeight){
+			let cellX = 0
+			while(cellX < windowWidth+cellWidth){
+				cells.push( new Cell(cellX,cellY,cellWidth) )
+				cellX += cellWidth
+			}
+			cellY += cellHeight
+		}
+	}
+
+	function resetCells() {
+		cellWidth = parseInt(document.getElementById('sizeInput').value)
+		cellHeight = cellWidth
+		livingChance = (100 - parseInt(document.getElementById('seedInput').value))/100
+		rows = ceil((windowWidth+cellWidth)/cellWidth)
+		cols = ceil((windowHeight+cellHeight)/cellHeight)
+		neighborsNeeded = parseInt(document.getElementById('neighborsNeededInput').value)
+		frameRate(parseInt(document.getElementById('frameRateInput').value))
+		
+		splitScreenIntoCells()
+	}
+
+	function mouseClicked(){
+		let minDist = cellWidth
+		let minDistCell
+		cells.forEach((cell)=>{
+			let centerX = cell.x + cell.width/2
+			let centerY = cell.y + cell.width/2
+			let dist = distance(mouseX, mouseY, centerX, centerY)
+			if (dist < minDist){
+				minDist = dist
+				minDistCell = cell
+			}
+		})
+		minDistCell.alive = !minDistCell.alive
+	}
+
+	function distance(x,y, x2, y2){
+		return pow( pow(x - x2, 2) + pow(y - y2,2), 0.5 )
+	}
+
+
+	class Cell {
+		constructor (x,y,width) {
+			this.x = x
+			this.y = y
+			this.width = width
+			this.alive = (random() >= livingChance)
+		}
+		draw(){
+			fill(255)
+			strokeWeight(0)
+			if(this.alive)
+				fill(66, 245, 132)
+			rect(this.x, this.y, this.width, this.width)
+		}
+		checkNeighbors(index,cells){
+			let aliveCount = 0
+			let currCol = index % (cols+1)
+
+			//top left
+			let topLI = index - rows - 1
+			if (topLI < 0)
+				topLI += rows * cols
+			if(cells[topLI].alive)
+				aliveCount++
+
+			//top 
+			let topI = index - rows
+			if (topI < 0)
+				topI += rows * cols
+			if(cells[topI].alive)
+				aliveCount++
+
+			//top right
+			let topRI = index - rows + 1
+			if (topRI < 0)
+				topRI += rows * cols
+			if(cells[topRI].alive)
+				aliveCount++
+
+			//left
+			let leftI = index - 1
+			if (currCol == 0)
+				leftI = index + cols - 1
+			if (leftI >= rows * cols)
+				leftI -= rows * cols
+			if(cells[leftI].alive)
+				aliveCount++
+
+			//right
+			let rightI = index + 1
+			if (currCol > cols)
+				rightI = index - cols
+			if (rightI >= rows * cols)
+				rightI -= rows * cols
+			if(cells[rightI].alive)
+				aliveCount++
+
+			//bottom left
+			let bottomLI = index + rows - 1
+			if (bottomLI >= rows * cols)
+				bottomLI -= rows*cols
+			if(cells[bottomLI].alive)
+				aliveCount++
+
+			//bottom
+			let bottomI = index + rows
+			if (bottomI >= rows * cols)
+				bottomI = currCol
+			if(cells[bottomI].alive)
+				aliveCount++
+
+			//bottom right
+			let bottomRI = index + rows + 1
+			if (bottomRI >= rows * cols)
+				bottomRI -= rows * cols
+			if(cells[bottomRI].alive)
+				aliveCount++
+
+			if (aliveCount >= neighborsNeeded)
+				emerginCells.push(this)
+			else
+				dyingCells.push(this)
+		}
+
+	}
+
+
+</script>
+<style type="text/css">
+	*{
+		margin: 0;
+		padding: 0;
+		border-sizing: border-box;
+		overflow: hidden;
+		font-family: Courier New;
+	}
+</style>
